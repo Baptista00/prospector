@@ -1,6 +1,7 @@
 # Prospector
 
-Encontra negócios de Brusque sem site próprio (via API do Google Places),
+Encontra negócios de Brusque sem site próprio (dados do Google Maps, via SerpApi
+ou Google Places API),
 pontua os melhores alvos e gera uma planilha com link de WhatsApp pronto
 para abordagem. **Nada é enviado automaticamente** — você revisa e envia.
 
@@ -17,18 +18,26 @@ python main.py --demo
 
 # Busca de verdade:
 copy .env.example .env
-# edite o .env e cole sua chave em GOOGLE_MAPS_API_KEY
+# edite o .env e cole sua chave em SERPAPI_KEY
 python main.py
 ```
 
-## Chave da API (Google Cloud)
+## Chave da API
 
-1. Acesse https://console.cloud.google.com e crie um projeto.
-2. Ative a **Places API (New)** em "APIs e serviços".
-3. Em "Credenciais", crie uma **chave de API** e cole no `.env`.
-4. Recomendado: em "Faturamento", configure alerta de orçamento (ex.: R$ 10)
-   e restrinja a chave à Places API. A cota gratuita mensal cobre com folga
-   o uso normal deste projeto (poucas dezenas de buscas por mês).
+O provedor é escolhido em `PROVEDOR` no `config.py`.
+
+**SerpApi (padrão, gratuito e sem cartão)**
+1. Crie uma conta em https://serpapi.com/users/sign_up e confirme o e-mail.
+2. Copie sua chave em https://serpapi.com/manage-api-key.
+3. Cole no `.env` em `SERPAPI_KEY`.
+
+O plano gratuito dá 250 buscas por mês. Cada nicho usa 1 ou 2 buscas,
+então uma rodada com 5 nichos gasta cerca de 10.
+
+**Google Places API (New) (opcional)**
+Exige conta de faturamento no Google Cloud. Ative a Places API (New), crie
+uma chave restrita a ela, cole em `GOOGLE_MAPS_API_KEY` e troque
+`PROVEDOR = "google"` no `config.py`.
 
 ## Fluxo de trabalho
 
@@ -46,7 +55,7 @@ python main.py
 |---|---|
 | `config.py` | nichos, cidade, mensagem de abordagem |
 | `main.py` | ponto de entrada |
-| `prospector/places.py` | chamadas à API do Google Places |
+| `prospector/places.py` | busca na SerpApi ou na Google Places API |
 | `prospector/filtro.py` | detecta "sem site" / "só rede social" |
 | `prospector/pontuacao.py` | prioridade de cada empresa (0–100) |
 | `prospector/banco.py` | SQLite (`dados/prospects.db`) |

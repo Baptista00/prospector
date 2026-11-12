@@ -2,6 +2,11 @@
 
 CIDADE = "Brusque, SC"
 
+# De onde vêm os dados:
+#   "serpapi" -> SerpApi, plano gratuito sem cartão (chave SERPAPI_KEY no .env)
+#   "google"  -> Google Places API (New) (chave GOOGLE_MAPS_API_KEY no .env)
+PROVEDOR = "serpapi"
+
 # Cada nicho vira uma busca: "<nicho> em <CIDADE>"
 NICHOS = [
     "pet shop",

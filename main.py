@@ -38,10 +38,14 @@ def main():
     args = ap.parse_args()
 
     load_dotenv()
-    chave = os.getenv("GOOGLE_MAPS_API_KEY", "").strip()
+    variavel = {"serpapi": "SERPAPI_KEY", "google": "GOOGLE_MAPS_API_KEY"}.get(config.PROVEDOR)
+    if not variavel:
+        print(f"PROVEDOR inválido no config.py: {config.PROVEDOR!r} (use 'serpapi' ou 'google').")
+        sys.exit(1)
+    chave = os.getenv(variavel, "").strip()
     if not args.demo and not chave:
-        print("Falta a chave da API. Copie .env.example para .env e preencha "
-              "GOOGLE_MAPS_API_KEY, ou rode com --demo para testar.")
+        print(f"Falta a chave da API. Copie .env.example para .env e preencha "
+              f"{variavel}, ou rode com --demo para testar.")
         sys.exit(1)
 
     os.makedirs(config.PASTA_DADOS, exist_ok=True)
@@ -65,7 +69,7 @@ def main():
                 brutos = demo.empresas_exemplo(nicho)
             else:
                 brutos = places.buscar(
-                    nicho, config.CIDADE, chave, config.LATITUDE, config.LONGITUDE,
+                    config.PROVEDOR, nicho, config.CIDADE, chave, config.LATITUDE, config.LONGITUDE,
                     config.RAIO_METROS, config.PAGINAS_POR_NICHO,
                 )
         except places.ErroAPI as erro:
