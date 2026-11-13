@@ -5,3 +5,4 @@ dados/*.db
 dados/*.xlsx
 ~$*.xlsx
 .~lock.*#
+dados/demo/

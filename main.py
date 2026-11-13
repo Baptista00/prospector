@@ -4,6 +4,7 @@ Uso:
     python main.py            busca de verdade (precisa da chave no .env)
     python main.py --demo     testa com dados fictícios, sem chave
     python main.py --nicho "barbearia"   busca só um nicho
+    python main.py --sem-busca           só regera a planilha (não gasta buscas da API)
 """
 
 import argparse
@@ -35,6 +36,8 @@ def main():
     ap = argparse.ArgumentParser(description="Prospector de clientes para landing pages")
     ap.add_argument("--demo", action="store_true", help="usa dados fictícios, sem API")
     ap.add_argument("--nicho", help="busca só este nicho (ex.: 'pet shop')")
+    ap.add_argument("--sem-busca", action="store_true",
+                    help="não chama a API: só sincroniza a planilha com o banco e regera")
     args = ap.parse_args()
 
     load_dotenv()
@@ -43,14 +46,18 @@ def main():
         print(f"PROVEDOR inválido no config.py: {config.PROVEDOR!r} (use 'serpapi' ou 'google').")
         sys.exit(1)
     chave = os.getenv(variavel, "").strip()
-    if not args.demo and not chave:
+    if not args.demo and not args.sem_busca and not chave:
         print(f"Falta a chave da API. Copie .env.example para .env e preencha "
               f"{variavel}, ou rode com --demo para testar.")
         sys.exit(1)
 
     os.makedirs(config.PASTA_DADOS, exist_ok=True)
-    arquivo_banco = config.ARQUIVO_BANCO.replace(".db", "_demo.db") if args.demo else config.ARQUIVO_BANCO
-    arquivo_planilha = config.ARQUIVO_PLANILHA.replace(".xlsx", "_demo.xlsx") if args.demo else config.ARQUIVO_PLANILHA
+    if args.demo:  # o teste fica numa subpasta, para não misturar com a planilha real
+        os.makedirs(os.path.join(config.PASTA_DADOS, "demo"), exist_ok=True)
+        arquivo_banco = os.path.join(config.PASTA_DADOS, "demo", "prospects_demo.db")
+        arquivo_planilha = os.path.join(config.PASTA_DADOS, "demo", "prospects_demo.xlsx")
+    else:
+        arquivo_banco, arquivo_planilha = config.ARQUIVO_BANCO, config.ARQUIVO_PLANILHA
 
     con = banco.conectar(arquivo_banco)
 
@@ -60,7 +67,7 @@ def main():
         print(f"Status atualizado a partir da planilha: {alterados} empresa(s).")
 
     # 2. Busca
-    nichos = [args.nicho] if args.nicho else config.NICHOS
+    nichos = [] if args.sem_busca else ([args.nicho] if args.nicho else config.NICHOS)
     novas = total = 0
     for nicho in nichos:
         print(f"Buscando: {nicho}...", end=" ", flush=True)

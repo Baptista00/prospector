@@ -48,6 +48,15 @@ uma chave restrita a ela, cole em `GOOGLE_MAPS_API_KEY` e troque
    observações.
 4. Na próxima rodada, feche o Excel e rode `python main.py` de novo: o
    status que você marcou é preservado e empresas novas entram na lista.
+5. Quando publicar a prévia de uma empresa, cole o endereço na coluna
+   **Link da prévia**. Ele também é preservado entre as rodadas.
+
+Para só reorganizar a planilha sem gastar buscas da API (por exemplo,
+depois de editar status, observações ou links):
+
+```powershell
+python main.py --sem-busca
+```
 
 ## Estrutura
 

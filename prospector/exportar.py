@@ -20,6 +20,7 @@ COLUNAS = [
     ("Situação do site", 16),
     ("Status", 12),
     ("Observações", 30),
+    ("Link da prévia", 34),
     ("WhatsApp", 12),
     ("Google Maps", 12),
     ("Site/rede", 28),
@@ -46,26 +47,36 @@ def gerar(caminho, empresas, links_whatsapp):
 
     link_font = Font(color="0563C1", underline="single")
 
-    for linha, e in enumerate(empresas, start=2):
-        valores = [
-            e["prioridade"], e["pontos"], e["nome"], e["nicho"], e["bairro"],
-            e["telefone"], e["nota"], e["avaliacoes"], e["situacao_site"],
-            e["status"], e["observacoes"], None, None, e["site"], e["place_id"],
-        ]
-        for col, v in enumerate(valores, start=1):
-            ws.cell(row=linha, column=col, value=v)
+    col = {titulo: i for i, (titulo, _) in enumerate(COLUNAS, start=1)}
+    letra = {t: ws.cell(row=1, column=i).column_letter for t, i in col.items()}
 
+    for linha, e in enumerate(empresas, start=2):
+        valores = {
+            "Prioridade": e["prioridade"], "Pontos": e["pontos"], "Nome": e["nome"],
+            "Nicho": e["nicho"], "Bairro": e["bairro"], "Telefone": e["telefone"],
+            "Nota": e["nota"], "Avaliações": e["avaliacoes"],
+            "Situação do site": e["situacao_site"], "Status": e["status"],
+            "Observações": e["observacoes"], "Site/rede": e["site"], "ID": e["place_id"],
+        }
+        for titulo, v in valores.items():
+            ws.cell(row=linha, column=col[titulo], value=v)
+
+        previa = (e.get("link_previa") or "").strip()
+        if previa:
+            c = ws.cell(row=linha, column=col["Link da prévia"], value=previa)
+            c.hyperlink = previa if "://" in previa else f"https://{previa}"
+            c.font = link_font
         wa = links_whatsapp.get(e["place_id"])
         if wa:
-            c = ws.cell(row=linha, column=12, value="Abrir")
+            c = ws.cell(row=linha, column=col["WhatsApp"], value="Abrir")
             c.hyperlink, c.font = wa, link_font
         if e["maps"]:
-            c = ws.cell(row=linha, column=13, value="Ver no mapa")
+            c = ws.cell(row=linha, column=col["Google Maps"], value="Ver no mapa")
             c.hyperlink, c.font = e["maps"], link_font
 
         cor = CORES_PRIORIDADE.get(e["prioridade"])
         if cor:
-            ws.cell(row=linha, column=1).fill = PatternFill("solid", fgColor=cor)
+            ws.cell(row=linha, column=col["Prioridade"]).fill = PatternFill("solid", fgColor=cor)
 
     ultima = max(len(empresas) + 1, 2)
 
@@ -74,23 +85,26 @@ def gerar(caminho, empresas, links_whatsapp):
         type="list", formula1='"' + ",".join(STATUS_VALIDOS) + '"', allow_blank=True
     )
     ws.add_data_validation(dv)
-    dv.add(f"J2:J{ultima + 500}")
+    dv.add(f"{letra['Status']}2:{letra['Status']}{ultima + 500}")
 
     # Destaque de status fechado
     ws.conditional_formatting.add(
-        f"J2:J{ultima + 500}",
+        f"{letra['Status']}2:{letra['Status']}{ultima + 500}",
         CellIsRule(operator="equal", formula=['"fechado"'],
                    fill=PatternFill("solid", fgColor="C6EFCE")),
     )
 
     ws.auto_filter.ref = f"A1:{ws.cell(row=1, column=len(COLUNAS)).column_letter}{ultima}"
-    ws.column_dimensions["O"].hidden = True  # ID interno, usado para sincronizar
+    ws.column_dimensions[letra["ID"]].hidden = True  # ID interno, usado para sincronizar
 
     wb.save(caminho)
 
 
 def ler_status(caminho):
-    """Retorna [(place_id, status, observacoes)] da planilha, se ela existir."""
+    """Retorna [(place_id, status, observacoes, link_previa)] da planilha, se ela existir.
+
+    Funciona também com planilhas antigas, sem a coluna "Link da prévia".
+    """
     try:
         wb = load_workbook(caminho, read_only=True)
     except FileNotFoundError:
@@ -98,9 +112,11 @@ def ler_status(caminho):
     ws = wb["Prospects"]
     cab = [c.value for c in next(ws.iter_rows(min_row=1, max_row=1))]
     i_id, i_st, i_obs = cab.index("ID"), cab.index("Status"), cab.index("Observações")
+    i_link = cab.index("Link da prévia") if "Link da prévia" in cab else None
     linhas = []
     for row in ws.iter_rows(min_row=2, values_only=True):
         if row[i_id]:
-            linhas.append((row[i_id], row[i_st], row[i_obs]))
+            link = row[i_link] if i_link is not None else ""
+            linhas.append((row[i_id], row[i_st], row[i_obs], link))
     wb.close()
     return linhas

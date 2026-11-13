@@ -24,6 +24,7 @@ CREATE TABLE IF NOT EXISTS empresas (
     prioridade      TEXT,
     status          TEXT DEFAULT 'novo',
     observacoes     TEXT DEFAULT '',
+    link_previa     TEXT DEFAULT '',
     encontrado_em   TEXT,
     atualizado_em   TEXT
 );
@@ -34,13 +35,18 @@ def conectar(caminho):
     con = sqlite3.connect(caminho)
     con.row_factory = sqlite3.Row
     con.execute(ESQUEMA)
+    # Migração: bancos criados antes da coluna link_previa
+    colunas = {linha["name"] for linha in con.execute("PRAGMA table_info(empresas)")}
+    if "link_previa" not in colunas:
+        con.execute("ALTER TABLE empresas ADD COLUMN link_previa TEXT DEFAULT ''")
+        con.commit()
     return con
 
 
 def salvar(con, empresa):
     """Insere uma empresa nova ou atualiza os dados públicos de uma existente.
 
-    status e observacoes NUNCA são sobrescritos, para não perder o seu controle.
+    status, observacoes e link_previa NUNCA são sobrescritos, para não perder o seu controle.
     Retorna True se a empresa é nova.
     """
     hoje = date.today().isoformat()
@@ -79,18 +85,20 @@ def listar(con):
 
 
 def importar_status(con, linhas):
-    """Recebe [(place_id, status, observacoes)] vindos da planilha."""
+    """Recebe [(place_id, status, observacoes, link_previa)] vindos da planilha."""
     alterados = 0
-    for place_id, status, obs in linhas:
+    for place_id, status, obs, link in linhas:
         if not place_id:
             continue
         status = (status or "novo").strip().lower()
         if status not in STATUS_VALIDOS:
             continue
+        obs, link = (obs or "").strip(), (link or "").strip()
         cur = con.execute(
-            "UPDATE empresas SET status = ?, observacoes = ? "
-            "WHERE place_id = ? AND (status != ? OR observacoes != ?)",
-            (status, obs or "", place_id, status, obs or ""),
+            "UPDATE empresas SET status = ?, observacoes = ?, link_previa = ? "
+            "WHERE place_id = ? AND (status != ? OR IFNULL(observacoes, '') != ? "
+            "OR IFNULL(link_previa, '') != ?)",
+            (status, obs, link, place_id, status, obs, link),
         )
         alterados += cur.rowcount
     return alterados
