@@ -90,10 +90,19 @@ def importar_status(con, linhas):
     for place_id, status, obs, link in linhas:
         if not place_id:
             continue
-        status = (status or "novo").strip().lower()
+        obs, link = str(obs or "").strip(), str(link or "").strip()
+        status = str(status or "novo").strip().lower()
         if status not in STATUS_VALIDOS:
-            continue
-        obs, link = (obs or "").strip(), (link or "").strip()
+            # Texto fora da lista: mantém o status do banco e guarda o texto
+            # nas observações, para nada do que você escreveu se perder.
+            atual = con.execute(
+                "SELECT status FROM empresas WHERE place_id = ?", (place_id,)
+            ).fetchone()
+            if not atual:
+                continue
+            if status and status not in obs.lower():
+                obs = f"{obs} ({status})".strip() if obs else status
+            status = atual["status"]
         cur = con.execute(
             "UPDATE empresas SET status = ?, observacoes = ?, link_previa = ? "
             "WHERE place_id = ? AND (status != ? OR IFNULL(observacoes, '') != ? "
