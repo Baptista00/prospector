@@ -51,13 +51,14 @@ MENSAGEM = (
 # quando a empresa ainda não tem mensagens próprias. Variáveis: {nome}, {nicho}, {link}
 # As mensagens de cada empresa aparecem (e podem ser editadas) nas colunas
 # Mensagem 1, 2 e 3 da planilha. Sem quebra de linha dentro delas: assim
-# copiar a célula não traz aspas junto.
+# copiar a célula não traz aspas junto. Evite escrever ".com.br" solto: o
+# WhatsApp transforma em link.
 MENSAGEM_SITE_PRONTO = (
     "Boa tarde! Tudo bem? Me chamo Lucas Baptista, trabalho com criação de sites "
     "para empresas aqui de Brusque.",
     "Preparei um site para a {nome}. Ele já está pronto, dá uma olhada: {link}",
-    "Se gostarem, eu cuido de tudo para colocar no ar: endereço próprio (.com.br), "
-    "hospedagem e as atualizações sempre que precisarem. Também ajusto qualquer "
+    "Se gostarem, eu cuido de tudo para colocar no ar: endereço próprio com o nome "
+    "de vocês, hospedagem e as atualizações sempre que precisarem. Também ajusto qualquer "
     "detalhe que quiserem mudar. Sobre o valor, a gente conversa e combina algo "
     "que faça sentido para vocês.",
 )
