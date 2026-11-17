@@ -48,8 +48,32 @@ uma chave restrita a ela, cole em `GOOGLE_MAPS_API_KEY` e troque
    observações.
 4. Na próxima rodada, feche o Excel e rode `python main.py` de novo: o
    status que você marcou é preservado e empresas novas entram na lista.
-5. Quando publicar a prévia de uma empresa, cole o endereço na coluna
+5. Quando o site de uma empresa ficar pronto, cole o endereço na coluna
    **Link da prévia**. Ele também é preservado entre as rodadas.
+
+## As abas da planilha
+
+Cada empresa aparece em uma aba só:
+
+| Aba | Quem fica nela |
+|---|---|
+| **Sites prontos** | empresas com o link do site preenchido: é a fila de abordagem |
+| **Prospects** | empresas encontradas que ainda não têm site pronto |
+| **Recusaram** | empresas com status `recusou` |
+
+Para mudar uma empresa de aba, edite a planilha, feche o Excel e rode
+`python main.py --sem-busca`:
+
+- colou o link do site em **Prospects** → ela vai para **Sites prontos**;
+- mudou o status para `recusou` (em qualquer aba) → ela vai para **Recusaram**;
+- tirou o `recusou` → ela volta para a aba de antes.
+
+Na aba **Sites prontos**, a coluna **Mensagem** tem o texto de abordagem
+daquela empresa, e o link **Enviar mensagem** abre o WhatsApp com esse
+texto escrito. Pode editar a mensagem direto na célula: ela é guardada e o
+link é refeito na próxima rodada. Empresa sem mensagem própria recebe o
+modelo `MENSAGEM_SITE_PRONTO` do `config.py`. Se trocar o link do site,
+troque também dentro da mensagem.
 
 Para só reorganizar a planilha sem gastar buscas da API (por exemplo,
 depois de editar status, observações ou links):
@@ -62,13 +86,13 @@ python main.py --sem-busca
 
 | Arquivo | Função |
 |---|---|
-| `config.py` | nichos, cidade, mensagem de abordagem |
+| `config.py` | nichos, cidade, mensagens de abordagem |
 | `main.py` | ponto de entrada |
 | `prospector/places.py` | busca na SerpApi ou na Google Places API |
 | `prospector/filtro.py` | detecta "sem site" / "só rede social" |
 | `prospector/pontuacao.py` | prioridade de cada empresa (0–100) |
 | `prospector/banco.py` | SQLite (`dados/prospects.db`) |
 | `prospector/mensagens.py` | texto e link `wa.me` |
-| `prospector/exportar.py` | planilha `.xlsx` e leitura do status |
+| `prospector/exportar.py` | planilha `.xlsx` (abas) e leitura do que você editou |
 
 Para mudar os nichos ou a mensagem, edite só o `config.py`.

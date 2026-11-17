@@ -8,7 +8,9 @@ from urllib.parse import quote
 
 
 def gerar_texto(modelo, empresa):
-    return modelo.format(nome=empresa["nome"], nicho=empresa["nicho"])
+    return modelo.format(
+        nome=empresa["nome"], nicho=empresa["nicho"], link=empresa.get("link_previa") or ""
+    )
 
 
 def gerar_link(telefone_intl, texto):
@@ -17,4 +19,6 @@ def gerar_link(telefone_intl, texto):
         return ""
     if not digitos.startswith("55"):
         digitos = "55" + digitos
+    if not texto:
+        return f"https://wa.me/{digitos}"
     return f"https://wa.me/{digitos}?text={quote(texto)}"

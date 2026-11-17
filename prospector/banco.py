@@ -25,6 +25,7 @@ CREATE TABLE IF NOT EXISTS empresas (
     status          TEXT DEFAULT 'novo',
     observacoes     TEXT DEFAULT '',
     link_previa     TEXT DEFAULT '',
+    mensagem        TEXT DEFAULT '',
     encontrado_em   TEXT,
     atualizado_em   TEXT
 );
@@ -35,18 +36,19 @@ def conectar(caminho):
     con = sqlite3.connect(caminho)
     con.row_factory = sqlite3.Row
     con.execute(ESQUEMA)
-    # Migração: bancos criados antes da coluna link_previa
+    # Migração: bancos criados antes das colunas link_previa e mensagem
     colunas = {linha["name"] for linha in con.execute("PRAGMA table_info(empresas)")}
-    if "link_previa" not in colunas:
-        con.execute("ALTER TABLE empresas ADD COLUMN link_previa TEXT DEFAULT ''")
-        con.commit()
+    for coluna in ("link_previa", "mensagem"):
+        if coluna not in colunas:
+            con.execute(f"ALTER TABLE empresas ADD COLUMN {coluna} TEXT DEFAULT ''")
+            con.commit()
     return con
 
 
 def salvar(con, empresa):
     """Insere uma empresa nova ou atualiza os dados públicos de uma existente.
 
-    status, observacoes e link_previa NUNCA são sobrescritos, para não perder o seu controle.
+    status, observacoes, link_previa e mensagem NUNCA são sobrescritos, para não perder o seu controle.
     Retorna True se a empresa é nova.
     """
     hoje = date.today().isoformat()
@@ -85,29 +87,34 @@ def listar(con):
 
 
 def importar_status(con, linhas):
-    """Recebe [(place_id, status, observacoes, link_previa)] vindos da planilha."""
+    """Recebe [(place_id, status, observacoes, link_previa, mensagem)] vindos da planilha.
+
+    mensagem = None quer dizer que a aba não tem essa coluna: o valor do banco fica como está.
+    """
     alterados = 0
-    for place_id, status, obs, link in linhas:
+    for place_id, status, obs, link, mensagem in linhas:
         if not place_id:
             continue
+        atual = con.execute(
+            "SELECT status, IFNULL(mensagem, '') AS mensagem FROM empresas WHERE place_id = ?",
+            (place_id,),
+        ).fetchone()
+        if not atual:
+            continue
         obs, link = str(obs or "").strip(), str(link or "").strip()
+        mensagem = atual["mensagem"] if mensagem is None else str(mensagem).strip()
         status = str(status or "novo").strip().lower()
         if status not in STATUS_VALIDOS:
             # Texto fora da lista: mantém o status do banco e guarda o texto
             # nas observações, para nada do que você escreveu se perder.
-            atual = con.execute(
-                "SELECT status FROM empresas WHERE place_id = ?", (place_id,)
-            ).fetchone()
-            if not atual:
-                continue
             if status and status not in obs.lower():
                 obs = f"{obs} ({status})".strip() if obs else status
             status = atual["status"]
         cur = con.execute(
-            "UPDATE empresas SET status = ?, observacoes = ?, link_previa = ? "
+            "UPDATE empresas SET status = ?, observacoes = ?, link_previa = ?, mensagem = ? "
             "WHERE place_id = ? AND (status != ? OR IFNULL(observacoes, '') != ? "
-            "OR IFNULL(link_previa, '') != ?)",
-            (status, obs, link, place_id, status, obs, link),
+            "OR IFNULL(link_previa, '') != ? OR IFNULL(mensagem, '') != ?)",
+            (status, obs, link, mensagem, place_id, status, obs, link, mensagem),
         )
         alterados += cur.rowcount
     return alterados

@@ -47,6 +47,16 @@ MENSAGEM = (
     "posso te mandar o link para dar uma olhada? Sem compromisso."
 )
 
+# Mensagem padrão da aba "Sites prontos", usada quando a empresa ainda não tem
+# mensagem própria. Variáveis: {nome}, {nicho}, {link}
+# A mensagem de cada empresa aparece (e pode ser editada) na coluna Mensagem da planilha.
+MENSAGEM_SITE_PRONTO = (
+    "Oi, tudo bem? Aqui é o Lucas, sou de Brusque e faço sites para negócios da cidade.\n\n"
+    "Montei um site para a {nome}: {link}\n\n"
+    "Ele já está pronto. Se vocês gostarem, eu coloco no ar com o endereço de vocês "
+    "e cuido das atualizações. Dá uma olhada e me diz o que achou?"
+)
+
 PASTA_DADOS = "dados"
 ARQUIVO_BANCO = "dados/prospects.db"
 ARQUIVO_PLANILHA = "dados/prospects.xlsx"

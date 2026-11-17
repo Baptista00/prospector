@@ -63,6 +63,7 @@ def main():
 
     # 1. Puxa para o banco o status/observações que você editou na planilha
     alterados = banco.importar_status(con, exportar.ler_status(arquivo_planilha))
+    con.commit()
     if alterados:
         print(f"Status atualizado a partir da planilha: {alterados} empresa(s).")
 
@@ -105,12 +106,22 @@ def main():
     empresas = [dict(r) for r in banco.listar(con)]
     links = {}
     for e in empresas:
-        if e["tem_celular"] and e["pontos"] > 0:
+        if not e["tem_celular"]:
+            continue
+        aba = exportar.aba_de(e)
+        if aba == exportar.ABA_PRONTOS:
+            # Mensagem própria da empresa; sem ela, usa o modelo de site pronto do config.py
+            if not (e["mensagem"] or "").strip():
+                e["mensagem"] = mensagens.gerar_texto(config.MENSAGEM_SITE_PRONTO, e)
+            links[e["place_id"]] = mensagens.gerar_link(e["telefone_intl"], e["mensagem"])
+        elif aba == exportar.ABA_RECUSARAM:
+            links[e["place_id"]] = mensagens.gerar_link(e["telefone_intl"], "")
+        elif e["pontos"] > 0:
             texto = mensagens.gerar_texto(config.MENSAGEM, e)
             links[e["place_id"]] = mensagens.gerar_link(e["telefone_intl"], texto)
 
     try:
-        exportar.gerar(arquivo_planilha, empresas, links)
+        por_aba = exportar.gerar(arquivo_planilha, empresas, links)
     except PermissionError:
         print(f"\nNão consegui salvar {arquivo_planilha}: feche a planilha no Excel e rode de novo.")
         sys.exit(1)
@@ -121,6 +132,8 @@ def main():
         f"\nPronto. {total} resultados, {novas} empresas novas."
         f"\nNo banco: {len(empresas)} empresas, {len(alvos)} sem site próprio "
         f"({alta} de prioridade alta)."
+        f"\nSites prontos: {por_aba[exportar.ABA_PRONTOS]} | "
+        f"Recusaram: {por_aba[exportar.ABA_RECUSARAM]}"
         f"\nPlanilha: {arquivo_planilha}"
     )
 
