@@ -110,10 +110,15 @@ def main():
             continue
         aba = exportar.aba_de(e)
         if aba == exportar.ABA_PRONTOS:
-            # Mensagem própria da empresa; sem ela, usa o modelo de site pronto do config.py
-            if not (e["mensagem"] or "").strip():
-                e["mensagem"] = mensagens.gerar_texto(config.MENSAGEM_SITE_PRONTO, e)
-            links[e["place_id"]] = mensagens.gerar_link(e["telefone_intl"], e["mensagem"])
+            # Mensagens próprias da empresa (até 3, mandadas em sequência);
+            # sem nenhuma, usa o modelo de site pronto do config.py
+            if not any((e[c] or "").strip() for c in banco.COLUNAS_MENSAGEM):
+                for c, modelo in zip(banco.COLUNAS_MENSAGEM, config.MENSAGEM_SITE_PRONTO):
+                    e[c] = mensagens.gerar_texto(modelo, e)
+            links[e["place_id"]] = [
+                mensagens.gerar_link(e["telefone_intl"], e[c]) if (e[c] or "").strip() else None
+                for c in banco.COLUNAS_MENSAGEM
+            ]
         elif aba == exportar.ABA_RECUSARAM:
             links[e["place_id"]] = mensagens.gerar_link(e["telefone_intl"], "")
         elif e["pontos"] > 0:

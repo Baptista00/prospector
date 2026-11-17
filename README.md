@@ -68,19 +68,14 @@ Para mudar uma empresa de aba, edite a planilha, feche o Excel e rode
 - mudou o status para `recusou` (em qualquer aba) → ela vai para **Recusaram**;
 - tirou o `recusou` → ela volta para a aba de antes.
 
-Na aba **Sites prontos**, a coluna **Mensagem** tem o texto de abordagem
-daquela empresa, e o link **Enviar mensagem** abre o WhatsApp com esse
-texto escrito. Pode editar a mensagem direto na célula: ela é guardada e o
-link é refeito na próxima rodada. Empresa sem mensagem própria recebe o
-modelo `MENSAGEM_SITE_PRONTO` do `config.py`. Se trocar o link do site,
-troque também dentro da mensagem.
-
-Para só reorganizar a planilha sem gastar buscas da API (por exemplo,
-depois de editar status, observações ou links):
-
-```powershell
-python main.py --sem-busca
-```
+Na aba **Sites prontos**, cada empresa tem 3 mensagens de abordagem
+(**Mensagem 1**, **2** e **3**), para mandar em sequência. Cada uma tem ao
+lado um link **Enviar**, que abre a conversa no WhatsApp com aquele texto
+escrito: clica no 1º, envia, clica no 2º, envia, e assim por diante. Dá para
+editar as mensagens direto nas células: elas são guardadas e os links são
+refeitos na próxima rodada. Empresa sem mensagens próprias recebe o modelo
+`MENSAGEM_SITE_PRONTO` do `config.py`. Se trocar o link do site, troque
+também dentro da mensagem 2.
 
 ## Estrutura
 

@@ -18,7 +18,7 @@ from openpyxl.formatting.rule import CellIsRule
 from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.worksheet.datavalidation import DataValidation
 
-from .banco import STATUS_VALIDOS
+from .banco import COLUNAS_MENSAGEM, STATUS_VALIDOS
 
 ABA_PROSPECTS, ABA_PRONTOS, ABA_RECUSARAM = "Prospects", "Sites prontos", "Recusaram"
 
@@ -32,8 +32,9 @@ COLUNAS = {
     ],
     ABA_PRONTOS: [
         ("Nome", 28), ("Nicho", 13), ("Telefone", 16), ("Nota", 7), ("Avaliações", 11),
-        ("Status", 12), ("Observações", 28), ("Link do site", 56), ("Mensagem", 62),
-        ("WhatsApp", 17), ("Google Maps", 13), ("ID", 10),
+        ("Status", 12), ("Observações", 28), ("Link do site", 30),
+        ("Mensagem 1", 34), ("Enviar 1ª", 10), ("Mensagem 2", 46), ("Enviar 2ª", 10),
+        ("Mensagem 3", 52), ("Enviar 3ª", 10), ("Google Maps", 13), ("ID", 10),
     ],
     ABA_RECUSARAM: [
         ("Nome", 30), ("Nicho", 14), ("Telefone", 16), ("Status", 12),
@@ -44,7 +45,9 @@ COLUNAS = {
 
 COR_CABECALHO = {ABA_PROSPECTS: "1F3A5F", ABA_PRONTOS: "2E6B3A", ABA_RECUSARAM: "7A7A7A"}
 CORES_PRIORIDADE = {"Alta": "C6EFCE", "Média": "FFEB9C", "Baixa": "F2F2F2"}
-TEXTO_WHATSAPP = {ABA_PROSPECTS: "Abrir", ABA_PRONTOS: "Enviar mensagem", ABA_RECUSARAM: "Abrir"}
+TEXTO_WHATSAPP = {ABA_PROSPECTS: "Abrir", ABA_RECUSARAM: "Abrir"}
+# Colunas das mensagens na aba Sites prontos: (mensagem, link de envio, coluna no banco)
+MENSAGENS = [(f"Mensagem {i}", f"Enviar {i}ª", c) for i, c in enumerate(COLUNAS_MENSAGEM, start=1)]
 AVISO_VAZIO = {
     ABA_PRONTOS: "Quando o site de uma empresa ficar pronto, cole o endereço em "
                  "\"Link da prévia\" na aba Prospects e rode: python main.py --sem-busca",
@@ -52,8 +55,10 @@ AVISO_VAZIO = {
                    "e rode: python main.py --sem-busca",
 }
 
-# Cabeçalhos aceitos na leitura (planilhas antigas usam "Link da prévia" em tudo)
+# Cabeçalhos aceitos na leitura (planilhas antigas usam "Link da prévia" em tudo
+# e uma coluna "Mensagem" só, que vale como a mensagem 1)
 CABECALHOS_LINK = ("Link do site", "Link da prévia")
+CABECALHOS_MENSAGEM = [("Mensagem 1", "Mensagem"), ("Mensagem 2",), ("Mensagem 3",)]
 
 
 def aba_de(empresa):
@@ -100,8 +105,9 @@ def _aba(wb, aba, empresas, links_whatsapp, primeira=False):
             "Nota": e["nota"], "Avaliações": e["avaliacoes"],
             "Situação do site": e["situacao_site"], "Status": e["status"],
             "Observações": e["observacoes"], "Site/rede": e["site"], "ID": e["place_id"],
-            "Mensagem": e.get("mensagem") or "",
         }
+        for titulo_msg, _, coluna in MENSAGENS:
+            valores[titulo_msg] = e.get(coluna) or ""
         for titulo, v in valores.items():
             if titulo in col:
                 ws.cell(row=linha, column=col[titulo], value=v)
@@ -113,7 +119,13 @@ def _aba(wb, aba, empresas, links_whatsapp, primeira=False):
             c.hyperlink = link if "://" in link else f"https://{link}"
             c.font = link_font
         wa = links_whatsapp.get(e["place_id"])
-        if wa:
+        if isinstance(wa, list):
+            # Sites prontos: um link por mensagem, cada um abre a conversa com o texto
+            for (_, titulo_envio, _), url in zip(MENSAGENS, wa):
+                if url:
+                    c = ws.cell(row=linha, column=col[titulo_envio], value="Enviar")
+                    c.hyperlink, c.font = url, link_font
+        elif wa and "WhatsApp" in col:
             c = ws.cell(row=linha, column=col["WhatsApp"], value=TEXTO_WHATSAPP[aba])
             c.hyperlink, c.font = wa, link_font
         if e["maps"]:
@@ -128,8 +140,9 @@ def _aba(wb, aba, empresas, links_whatsapp, primeira=False):
             # Abas curtas: texto no topo da célula e mensagem inteira à vista
             for i in range(1, len(colunas) + 1):
                 ws.cell(row=linha, column=i).alignment = topo
-            if "Mensagem" in col and valores["Mensagem"]:
-                n = _linhas_de_texto(valores["Mensagem"], largura["Mensagem"])
+            n = max((_linhas_de_texto(valores[t], largura[t]) for t, _, _ in MENSAGENS
+                     if t in col and valores[t]), default=0)
+            if n:
                 ws.row_dimensions[linha].height = min(15 * n + 6, 400)
 
     ultima = max(len(empresas) + 1, 2)
@@ -182,10 +195,10 @@ def _texto_celula(valor):
 
 
 def ler_status(caminho):
-    """Retorna [(place_id, status, observacoes, link, mensagem)] de todas as abas.
+    """Retorna [(place_id, status, observacoes, link, [msg1, msg2, msg3])] de todas as abas.
 
-    mensagem vem como None quando a aba não tem essa coluna. Funciona também
-    com planilhas antigas, só com a aba Prospects e sem a coluna de link.
+    Cada mensagem vem como None quando a aba não tem aquela coluna. Funciona
+    também com planilhas antigas, só com a aba Prospects e sem a coluna de link.
     """
     try:
         wb = load_workbook(caminho, read_only=True)
@@ -201,12 +214,13 @@ def ler_status(caminho):
             continue
         i_id, i_st, i_obs = cab.index("ID"), cab.index("Status"), cab.index("Observações")
         i_link = next((cab.index(t) for t in CABECALHOS_LINK if t in cab), None)
-        i_msg = cab.index("Mensagem") if "Mensagem" in cab else None
+        i_msgs = [next((cab.index(t) for t in nomes if t in cab), None)
+                  for nomes in CABECALHOS_MENSAGEM]
         for row in ws.iter_rows(min_row=2, values_only=True):
             if len(row) <= i_id or not row[i_id]:
                 continue
             link = row[i_link] if i_link is not None else ""
-            mensagem = _texto_celula(row[i_msg]) if i_msg is not None else None
-            linhas.append((row[i_id], row[i_st], row[i_obs], link, mensagem))
+            msgs = [_texto_celula(row[i]) if i is not None else None for i in i_msgs]
+            linhas.append((row[i_id], row[i_st], row[i_obs], link, msgs))
     wb.close()
     return linhas

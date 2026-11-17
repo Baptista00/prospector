@@ -3,6 +3,8 @@
 import sqlite3
 from datetime import date
 
+COLUNAS_MENSAGEM = ("mensagem", "mensagem2", "mensagem3")
+
 STATUS_VALIDOS = ["novo", "contatado", "respondeu", "reunião", "fechado", "recusou"]
 
 ESQUEMA = """
@@ -26,6 +28,8 @@ CREATE TABLE IF NOT EXISTS empresas (
     observacoes     TEXT DEFAULT '',
     link_previa     TEXT DEFAULT '',
     mensagem        TEXT DEFAULT '',
+    mensagem2       TEXT DEFAULT '',
+    mensagem3       TEXT DEFAULT '',
     encontrado_em   TEXT,
     atualizado_em   TEXT
 );
@@ -36,9 +40,9 @@ def conectar(caminho):
     con = sqlite3.connect(caminho)
     con.row_factory = sqlite3.Row
     con.execute(ESQUEMA)
-    # Migração: bancos criados antes das colunas link_previa e mensagem
+    # Migração: bancos criados antes das colunas de link e de mensagens
     colunas = {linha["name"] for linha in con.execute("PRAGMA table_info(empresas)")}
-    for coluna in ("link_previa", "mensagem"):
+    for coluna in ("link_previa",) + COLUNAS_MENSAGEM:
         if coluna not in colunas:
             con.execute(f"ALTER TABLE empresas ADD COLUMN {coluna} TEXT DEFAULT ''")
             con.commit()
@@ -48,7 +52,7 @@ def conectar(caminho):
 def salvar(con, empresa):
     """Insere uma empresa nova ou atualiza os dados públicos de uma existente.
 
-    status, observacoes, link_previa e mensagem NUNCA são sobrescritos, para não perder o seu controle.
+    status, observacoes, link_previa e as mensagens NUNCA são sobrescritos, para não perder o seu controle.
     Retorna True se a empresa é nova.
     """
     hoje = date.today().isoformat()
@@ -87,22 +91,23 @@ def listar(con):
 
 
 def importar_status(con, linhas):
-    """Recebe [(place_id, status, observacoes, link_previa, mensagem)] vindos da planilha.
+    """Recebe [(place_id, status, observacoes, link_previa, [msg1, msg2, msg3])] da planilha.
 
-    mensagem = None quer dizer que a aba não tem essa coluna: o valor do banco fica como está.
+    Mensagem None quer dizer que a aba não tem aquela coluna: o valor do banco fica como está.
     """
     alterados = 0
-    for place_id, status, obs, link, mensagem in linhas:
+    for place_id, status, obs, link, msgs in linhas:
         if not place_id:
             continue
         atual = con.execute(
-            "SELECT status, IFNULL(mensagem, '') AS mensagem FROM empresas WHERE place_id = ?",
+            "SELECT status, " + ", ".join(f"IFNULL({c}, '') AS {c}" for c in COLUNAS_MENSAGEM)
+            + " FROM empresas WHERE place_id = ?",
             (place_id,),
         ).fetchone()
         if not atual:
             continue
         obs, link = str(obs or "").strip(), str(link or "").strip()
-        mensagem = atual["mensagem"] if mensagem is None else str(mensagem).strip()
+        msgs = [atual[c] if m is None else str(m).strip() for c, m in zip(COLUNAS_MENSAGEM, msgs)]
         status = str(status or "novo").strip().lower()
         if status not in STATUS_VALIDOS:
             # Texto fora da lista: mantém o status do banco e guarda o texto
@@ -110,11 +115,13 @@ def importar_status(con, linhas):
             if status and status not in obs.lower():
                 obs = f"{obs} ({status})".strip() if obs else status
             status = atual["status"]
+        campos = ("status", "observacoes", "link_previa") + COLUNAS_MENSAGEM
+        valores = [status, obs, link] + msgs
         cur = con.execute(
-            "UPDATE empresas SET status = ?, observacoes = ?, link_previa = ?, mensagem = ? "
-            "WHERE place_id = ? AND (status != ? OR IFNULL(observacoes, '') != ? "
-            "OR IFNULL(link_previa, '') != ? OR IFNULL(mensagem, '') != ?)",
-            (status, obs, link, mensagem, place_id, status, obs, link, mensagem),
+            "UPDATE empresas SET " + ", ".join(f"{c} = ?" for c in campos)
+            + " WHERE place_id = ? AND ("
+            + " OR ".join(f"IFNULL({c}, '') != ?" for c in campos) + ")",
+            valores + [place_id] + valores,
         )
         alterados += cur.rowcount
     return alterados

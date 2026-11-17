@@ -47,14 +47,19 @@ MENSAGEM = (
     "posso te mandar o link para dar uma olhada? Sem compromisso."
 )
 
-# Mensagem padrão da aba "Sites prontos", usada quando a empresa ainda não tem
-# mensagem própria. Variáveis: {nome}, {nicho}, {link}
-# A mensagem de cada empresa aparece (e pode ser editada) na coluna Mensagem da planilha.
+# Mensagens padrão da aba "Sites prontos" (3, mandadas em sequência), usadas
+# quando a empresa ainda não tem mensagens próprias. Variáveis: {nome}, {nicho}, {link}
+# As mensagens de cada empresa aparecem (e podem ser editadas) nas colunas
+# Mensagem 1, 2 e 3 da planilha. Sem quebra de linha dentro delas: assim
+# copiar a célula não traz aspas junto.
 MENSAGEM_SITE_PRONTO = (
-    "Oi, tudo bem? Aqui é o Lucas, sou de Brusque e faço sites para negócios da cidade.\n\n"
-    "Montei um site para a {nome}: {link}\n\n"
-    "Ele já está pronto. Se vocês gostarem, eu coloco no ar com o endereço de vocês "
-    "e cuido das atualizações. Dá uma olhada e me diz o que achou?"
+    "Boa tarde! Tudo bem? Me chamo Lucas Baptista, trabalho com criação de sites "
+    "para empresas aqui de Brusque.",
+    "Preparei um site para a {nome}. Ele já está pronto, dá uma olhada: {link}",
+    "Se gostarem, eu cuido de tudo para colocar no ar: endereço próprio (.com.br), "
+    "hospedagem e as atualizações sempre que precisarem. Também ajusto qualquer "
+    "detalhe que quiserem mudar. Sobre o valor, a gente conversa e combina algo "
+    "que faça sentido para vocês.",
 )
 
 PASTA_DADOS = "dados"
