@@ -58,13 +58,16 @@ Cada empresa aparece em uma aba só:
 | Aba | Quem fica nela |
 |---|---|
 | **Sites prontos** | empresas com o link do site preenchido: é a fila de abordagem |
-| **Prospects** | empresas encontradas que ainda não têm site pronto |
+| **Em desenvolvimento** | empresas com status `em desenvolvimento`: o site está sendo feito |
+| **Prospects** | empresas encontradas que ainda não entraram no funil |
 | **Recusaram** | empresas com status `recusou` |
 
 Para mudar uma empresa de aba, edite a planilha, feche o Excel e rode
 `python main.py --sem-busca`:
 
-- colou o link do site em **Prospects** → ela vai para **Sites prontos**;
+- mudou o status para `em desenvolvimento` → ela vai para **Em desenvolvimento**;
+- colou o link do site (em **Prospects** ou **Em desenvolvimento**) → ela vai
+  para **Sites prontos**, com o status de volta em `novo` até você mandar a mensagem;
 - mudou o status para `recusou` (em qualquer aba) → ela vai para **Recusaram**;
 - tirou o `recusou` → ela volta para a aba de antes.
 

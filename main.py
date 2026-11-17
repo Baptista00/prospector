@@ -64,6 +64,12 @@ def main():
     # 1. Puxa para o banco o status/observações que você editou na planilha
     alterados = banco.importar_status(con, exportar.ler_status(arquivo_planilha))
     con.commit()
+    # Site em desenvolvimento que ganhou link: está pronto, volta para "novo" até o contato
+    con.execute(
+        "UPDATE empresas SET status = 'novo' "
+        "WHERE status = 'em desenvolvimento' AND IFNULL(link_previa, '') != ''"
+    )
+    con.commit()
     if alterados:
         print(f"Status atualizado a partir da planilha: {alterados} empresa(s).")
 
@@ -119,6 +125,8 @@ def main():
                 mensagens.gerar_link(e["telefone_intl"], e[c]) if (e[c] or "").strip() else None
                 for c in banco.COLUNAS_MENSAGEM
             ]
+        elif aba == exportar.ABA_DEV:
+            continue  # ainda sem site: não tem o que mandar
         elif aba == exportar.ABA_RECUSARAM:
             links[e["place_id"]] = mensagens.gerar_link(e["telefone_intl"], "")
         elif e["pontos"] > 0:
@@ -138,6 +146,7 @@ def main():
         f"\nNo banco: {len(empresas)} empresas, {len(alvos)} sem site próprio "
         f"({alta} de prioridade alta)."
         f"\nSites prontos: {por_aba[exportar.ABA_PRONTOS]} | "
+        f"Em desenvolvimento: {por_aba[exportar.ABA_DEV]} | "
         f"Recusaram: {por_aba[exportar.ABA_RECUSARAM]}"
         f"\nPlanilha: {arquivo_planilha}"
     )

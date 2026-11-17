@@ -5,7 +5,9 @@ from datetime import date
 
 COLUNAS_MENSAGEM = ("mensagem", "mensagem2", "mensagem3")
 
-STATUS_VALIDOS = ["novo", "contatado", "respondeu", "reunião", "fechado", "recusou"]
+STATUS_VALIDOS = [
+    "novo", "em desenvolvimento", "contatado", "respondeu", "reunião", "fechado", "recusou",
+]
 
 ESQUEMA = """
 CREATE TABLE IF NOT EXISTS empresas (

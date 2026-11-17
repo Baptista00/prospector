@@ -1,14 +1,15 @@
 """Gera a planilha .xlsx e lê de volta o que você preencher nela.
 
-A planilha tem três abas, e cada empresa aparece em só uma delas:
+A planilha tem quatro abas, e cada empresa aparece em só uma delas:
 
-    Sites prontos  empresas com o link do site preenchido (a fila de abordagem)
-    Prospects      empresas encontradas que ainda não têm site pronto
-    Recusaram      empresas com status "recusou"
+    Sites prontos       empresas com o link do site preenchido (a fila de abordagem)
+    Em desenvolvimento  empresas com status "em desenvolvimento" (site sendo feito)
+    Prospects           empresas encontradas que ainda não entraram no funil
+    Recusaram           empresas com status "recusou"
 
-Para mudar uma empresa de aba, edite a planilha e rode de novo:
-preencher o link do site leva para "Sites prontos" e o status "recusou"
-leva para "Recusaram".
+Para mudar uma empresa de aba, edite a planilha e rode de novo: o status
+"em desenvolvimento" leva para "Em desenvolvimento", preencher o link do
+site leva para "Sites prontos" e o status "recusou" leva para "Recusaram".
 """
 
 import math
@@ -21,6 +22,8 @@ from openpyxl.worksheet.datavalidation import DataValidation
 from .banco import COLUNAS_MENSAGEM, STATUS_VALIDOS
 
 ABA_PROSPECTS, ABA_PRONTOS, ABA_RECUSARAM = "Prospects", "Sites prontos", "Recusaram"
+ABA_DEV = "Em desenvolvimento"
+ORDEM_ABAS = (ABA_PRONTOS, ABA_DEV, ABA_PROSPECTS, ABA_RECUSARAM)
 
 COLUNAS = {
     # aba: [(cabeçalho, largura)]
@@ -36,6 +39,11 @@ COLUNAS = {
         ("Mensagem 1", 34), ("Enviar 1ª", 10), ("Mensagem 2", 46), ("Enviar 2ª", 10),
         ("Mensagem 3", 52), ("Enviar 3ª", 10), ("Google Maps", 13), ("ID", 10),
     ],
+    ABA_DEV: [
+        ("Nome", 30), ("Nicho", 14), ("Bairro", 16), ("Telefone", 16), ("Nota", 7),
+        ("Avaliações", 11), ("Status", 18), ("Observações", 34), ("Link do site", 40),
+        ("Site/rede", 34), ("Google Maps", 13), ("ID", 10),
+    ],
     ABA_RECUSARAM: [
         ("Nome", 30), ("Nicho", 14), ("Telefone", 16), ("Status", 12),
         ("Observações", 44), ("Link do site", 56), ("WhatsApp", 12), ("Google Maps", 13),
@@ -43,7 +51,8 @@ COLUNAS = {
     ],
 }
 
-COR_CABECALHO = {ABA_PROSPECTS: "1F3A5F", ABA_PRONTOS: "2E6B3A", ABA_RECUSARAM: "7A7A7A"}
+COR_CABECALHO = {ABA_PROSPECTS: "1F3A5F", ABA_PRONTOS: "2E6B3A", ABA_DEV: "B5651D",
+                 ABA_RECUSARAM: "7A7A7A"}
 CORES_PRIORIDADE = {"Alta": "C6EFCE", "Média": "FFEB9C", "Baixa": "F2F2F2"}
 TEXTO_WHATSAPP = {ABA_PROSPECTS: "Abrir", ABA_RECUSARAM: "Abrir"}
 # Colunas das mensagens na aba Sites prontos: (mensagem, link de envio, coluna no banco)
@@ -51,6 +60,8 @@ MENSAGENS = [(f"Mensagem {i}", f"Enviar {i}ª", c) for i, c in enumerate(COLUNAS
 AVISO_VAZIO = {
     ABA_PRONTOS: "Quando o site de uma empresa ficar pronto, cole o endereço em "
                  "\"Link da prévia\" na aba Prospects e rode: python main.py --sem-busca",
+    ABA_DEV: "Quando começar o site de uma empresa, mude o Status dela para "
+             "\"em desenvolvimento\" na aba Prospects e rode: python main.py --sem-busca",
     ABA_RECUSARAM: "Quando uma empresa recusar, mude o Status dela para \"recusou\" "
                    "e rode: python main.py --sem-busca",
 }
@@ -67,6 +78,8 @@ def aba_de(empresa):
         return ABA_RECUSARAM
     if (empresa.get("link_previa") or "").strip():
         return ABA_PRONTOS
+    if (empresa.get("status") or "").strip().lower() == "em desenvolvimento":
+        return ABA_DEV
     return ABA_PROSPECTS
 
 
@@ -160,7 +173,8 @@ def _aba(wb, aba, empresas, links_whatsapp, primeira=False):
 
     # Cores do status: fechado em verde, conversa andando em amarelo, contatado em azul
     for valor, cor in (("fechado", "C6EFCE"), ("respondeu", "FFEB9C"),
-                       ("reunião", "FFEB9C"), ("contatado", "DDEBF7")):
+                       ("reunião", "FFEB9C"), ("contatado", "DDEBF7"),
+                       ("em desenvolvimento", "FCE4D6")):
         ws.conditional_formatting.add(
             faixa_status,
             CellIsRule(operator="equal", formula=[f'"{valor}"'],
@@ -179,9 +193,8 @@ def gerar(caminho, empresas, links_whatsapp):
         grupos[aba_de(e)].append(e)
 
     wb = Workbook()
-    _aba(wb, ABA_PRONTOS, grupos[ABA_PRONTOS], links_whatsapp, primeira=True)
-    _aba(wb, ABA_PROSPECTS, grupos[ABA_PROSPECTS], links_whatsapp)
-    _aba(wb, ABA_RECUSARAM, grupos[ABA_RECUSARAM], links_whatsapp)
+    for i, aba in enumerate(ORDEM_ABAS):
+        _aba(wb, aba, grupos[aba], links_whatsapp, primeira=(i == 0))
     wb.active = 0
     wb.save(caminho)
     return {aba: len(lista) for aba, lista in grupos.items()}
